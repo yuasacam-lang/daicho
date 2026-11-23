@@ -35,8 +35,8 @@ h2{font:800 18px/1.3 "M PLUS 1p",sans-serif;margin:22px 0 8px}
 .due{flex:none;font-weight:700;font-size:14px;white-space:nowrap}.due.hot{color:var(--acc)}
 .filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
 .filters button,.btn{flex:none;font:700 15px/1 "Noto Sans JP",sans-serif;padding:12px 14px;min-height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
-.filters button.on,.btn.pri{background:var(--head);color:#f3efe6;border-color:var(--head)}
-:root:not([data-theme=light]) .filters button.on{outline:1px solid #f3efe6}
+.filters button.on,.btn.pri{background:light-dark(#23201b,#f2c230);color:light-dark(#f3efe6,#1d1a10);border-color:light-dark(#23201b,#f2c230)}
+.gone{opacity:.55}.hatsu{color:var(--acc);font-weight:800;margin-right:4px}.banner{background:light-dark(#e7e1d4,#2b2824);border-radius:12px;padding:10px 14px;margin-top:12px;font-size:15px}
 .btn.warn{color:var(--acc);border-color:var(--acc)}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
 .empty{color:var(--mute);font-size:14px;padding:10px 2px}
@@ -88,8 +88,8 @@ const K='pocket-daicho-v1';
 let db={cows:{},events:[],cfg:{gK:285,gA:283}};
 const app=document.getElementById('app'),q=document.getElementById('q'),sheet=document.getElementById('sheet'),panel=document.getElementById('panel'),fab=document.getElementById('fab');
 let filt='すべて',tlFilt='すべて',cur=null;
-function load(){try{const s=localStorage.getItem(K);if(s){const d=JSON.parse(s);db={cows:d.cows||{},events:d.events||[],cfg:Object.assign({gK:285,gA:283},d.cfg||{})}}}catch(e){}}
-function save(){try{localStorage.setItem(K,JSON.stringify(db));return true}catch(e){toast('保存できませんでした。データ画面から書き出してください');return false}}
+function load(){IX=null;try{const s=localStorage.getItem(K);if(s){const d=JSON.parse(s);db={cows:d.cows||{},events:d.events||[],cfg:Object.assign({gK:285,gA:283},d.cfg||{})}}}catch(e){}}
+function save(){IX=null;try{localStorage.setItem(K,JSON.stringify(db));return true}catch(e){toast('保存できませんでした。データ画面から書き出してください');return false}}
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const today=()=>fmt(new Date());
@@ -116,16 +116,21 @@ const T={
  体重:[['kg','体重（kg）','number']],
  移動:[['barn','牛舎'],['pen','房（A〜D・Ai など）']],
  メモ:[['memo','メモ']]};
-function summary(e){switch(e.type){
+function summary(e){const s=summ0(e);return e.type!=='メモ'&&e.memo?[s,e.memo].filter(Boolean).join('／'):s}
+function summ0(e){switch(e.type){
  case'治療':return[e.sym,e.tx,e.temp&&e.temp+'℃'].filter(Boolean).join('／');
  case'授精':return e.semen||'';case'移植':return e.embryo||'';case'妊鑑':return e.res||'';
  case'分娩':return[e.calf&&('子 '+e.calf),e.csex,e.cond].filter(Boolean).join('／');
  case'体重':return e.kg?e.kg+' kg':'';case'移動':return[e.barn,e.pen].filter(Boolean).join(' ');
  default:return e.memo||''}}
-const evs=tag=>db.events.filter(e=>e.tag===tag).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+let IX=null;function ix(){if(IX)return IX;IX={};for(const e of db.events)(IX[e.tag]||(IX[e.tag]=[])).push(e);for(const k in IX)IX[k].sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);return IX}
+const evs=tag=>ix()[tag]||[];
+const active=t=>!(db.cows[t]||{}).gone;
 function loc(tag){const m=evs(tag).filter(e=>e.type==='移動').pop();const c=db.cows[tag]||{};return m?{barn:m.barn,pen:m.pen,since:m.date}:{barn:c.barn,pen:c.pen,since:null}}
 function preg(tag){let last=null;const ev=evs(tag);
   for(const e of ev){if(e.type==='授精'||e.type==='移植')last=e;else if(e.type==='分娩')last=null;else if(e.type==='妊鑑'&&last&&String(e.res).startsWith('－'))last=null}
+  const c=db.cows[tag]||{};const lastCalv=(ev.filter(e=>e.type==='分娩').pop()||{}).date||'';
+  if(c.due&&c.due>lastCalv){const pd=ev.filter(e=>e.type==='妊鑑').pop();return{due:c.due,from:{date:'',type:'配布リスト'},list:true,vdue:pd&&pd.vdue,conf:ev.some(e=>e.type==='妊鑑'&&String(e.res).startsWith('＋')&&e.date>=lastCalv),left:diff(today(),c.due)}}
   if(!last)return null;const d=decode(tag);const g=d&&d.breed==='アンガス'?+db.cfg.gA:+db.cfg.gK;
   const due=addDays(last.date,g-(last.type==='移植'?7:0));
   return{due,from:last,conf:ev.some(e=>e.type==='妊鑑'&&e.date>=last.date&&String(e.res).startsWith('＋')),left:diff(today(),due)}}
@@ -133,14 +138,14 @@ function lastSemen(tag){const e=evs(tag).filter(e=>e.type==='授精'||e.type==='
 const tagLink=(t,lbl)=>db.cows[t]?`<a href="#c-${esc(t)}">${esc(lbl||t)}</a>`:esc(lbl||t||'—');
 
 function rowHTML(t,extra=''){const c=db.cows[t]||{},l=loc(t),d=decode(t);
-  return `<a class="row" href="#c-${esc(t)}"><span class="chip">${esc(t)}</span><span class="t"><b>${esc(c.name||(d?d.breed+' '+d.sex:''))}</b><br>${esc([l.barn,l.pen].filter(Boolean).join(' ')||'居場所未登録')}</span>${extra}</a>`}
+  return `<a class="row" href="#c-${esc(t)}"><span class="chip">${esc(t)}</span><span class="t"><b>${c.parity1?`<span class="hatsu">${c.parity1==='?'?'初?':'初'}</span>`:''}${esc(c.name||(d?d.breed+' '+d.sex:''))}${c.plan?` ・プラン${esc(c.plan)}`:''}</b><br>${c.gone?'除籍 '+esc(c.gone==='台帳外'?'（台帳外）':c.gone):esc([l.barn,l.pen].filter(Boolean).join(' ')||'居場所未登録')}</span>${extra}</a>`}
 
 function home(){fab.hidden=true;cur=null;
-  const tags=Object.keys(db.cows).sort();
-  if(!tags.length){app.innerHTML=`<h2>はじめに</h2><div class="card"><p>まだ牛が登録されていません。</p><div class="btns"><button class="btn pri" id="sample">サンプルで試す</button><a class="btn" href="#data" style="text-decoration:none">CSVを取り込む</a><button class="btn" id="addCow">1頭ずつ登録</button></div><p class="small">データはこのスマホのブラウザの中だけに保存されます。週1回はデータ画面から書き出してください。</p></div>`;
+  const all=Object.keys(db.cows).sort();const tags=all.filter(active);
+  if(!all.length){app.innerHTML=`<h2>はじめに</h2><div class="card"><p>まだ牛が登録されていません。</p><div class="btns"><button class="btn pri" id="sample">サンプルで試す</button><a class="btn" href="#data" style="text-decoration:none">CSVを取り込む</a><button class="btn" id="addCow">1頭ずつ登録</button></div><p class="small">データはこのスマホのブラウザの中だけに保存されます。週1回はデータ画面から書き出してください。</p></div>`;
     document.getElementById('sample').onclick=loadSample;document.getElementById('addCow').onclick=()=>cowForm();return}
   const w=tags.map(t=>({t,p:preg(t)})).filter(x=>x.p&&x.p.left<=30&&x.p.left>=-10).sort((a,b)=>a.p.left-b.p.left);
-  const barns=['すべて',...new Set(tags.map(t=>loc(t).barn||'未登録'))];
+  const ORD=['成雌牛舎','黒毛ドナー牛舎','総合牛舎','育成牛舎','試験牛舎','繁殖牛舎','放牧・その他'];const barns=['すべて',...[...new Set(tags.map(t=>loc(t).barn||'未登録'))].sort((a,b)=>(ORD.indexOf(a)+99)%99-(ORD.indexOf(b)+99)%99)];
   const shown=tags.filter(t=>filt==='すべて'||(loc(t).barn||'未登録')===filt);
   const rec=[...db.events].sort((a,b)=>(b.date+b.id)>(a.date+a.id)?1:-1).slice(0,6);
   app.innerHTML=`<h2>分娩の監視（予定日の14日前から）</h2><div class="list">${w.length?w.map(x=>rowHTML(x.t,`<span class="due ${x.p.left<=14?'hot':''}">${x.p.left>=0?'あと'+x.p.left+'日':(-x.p.left)+'日超過'}<br><span class="small">${md(x.p.due)}${x.p.conf?'':'・未鑑定'}</span></span>`)).join(''):'<div class="empty">30日以内に分娩予定の牛はいません</div>'}</div>
@@ -163,8 +168,9 @@ function cowView(t){cur=t;const c=db.cows[t];if(!c){app.innerHTML=`<div class="c
   const tl=ev.filter(e=>tlFilt==='すべて'||e.type===tlFilt).reverse();
   app.innerHTML=`<div class="tagwrap"><div class="bigtag">${tagSVG(t)}</div><dl class="facts">
    <dt>品種</dt><dd>${esc(d?d.breed+'・'+d.sex:'不明')}</dd><dt>生まれ</dt><dd>${esc(c.birth||(d?d.y:'—'))}${age!=null?`（${age}か月）`:''}</dd>
-   ${c.name?`<dt>名号</dt><dd>${esc(c.name)}</dd>`:''}<dt>居場所</dt><dd>${esc([l.barn,l.pen].filter(Boolean).join(' ')||'未登録')}${l.since?`<span class="small"> ${md(l.since)}〜</span>`:''}</dd></dl></div>
-   ${p?(p.left<=14?`<div class="alert">分娩予定 ${esc(p.due)}（${p.left>=0?'あと'+p.left+'日':(-p.left)+'日超過'}）・監視中${p.conf?'':'・妊娠鑑定まだ'}</div>`:`<div class="note">分娩予定 ${esc(p.due)}（あと${p.left}日）${p.conf?'・妊娠確認済み':'・妊娠鑑定まだ'}<br><span class="small">${esc(p.from.date)}の${esc(p.from.type)}から計算した目安</span></div>`):''}
+   ${c.name?`<dt>名号</dt><dd>${esc(c.name)}</dd>`:''}<dt>居場所</dt><dd>${esc([l.barn,l.pen].filter(Boolean).join(' ')||'未登録')}${l.since?`<span class="small"> ${md(l.since)}〜</span>`:''}</dd>${c.plan?`<dt>給餌プラン</dt><dd>${esc(c.plan)}</dd>`:''}${c.parity1?`<dt>初産</dt><dd><span class="hatsu">${c.parity1==='?'?'初?（初産か不明）':'初（初産）'}</span></dd>`:''}</dl></div>
+   ${c.gone?`<div class="banner">除籍 ${esc(c.gone==='台帳外'?'':c.gone)} ${esc(c.goneWhy||'')}</div>`:''}
+   ${p?(p.left<=14?`<div class="alert">分娩予定 ${esc(p.due)}（${p.left>=0?'あと'+p.left+'日':(-p.left)+'日超過'}）・監視中${p.conf?'':'・妊娠鑑定まだ'}${p.list&&p.vdue&&p.vdue!==p.due?`<br><span style="font-weight:400;font-size:14px">Velosでは ${esc(p.vdue)}</span>`:''}</div>`:`<div class="note">分娩予定 ${esc(p.due)}（あと${p.left}日）${p.conf?'・妊娠確認済み':'・妊娠鑑定まだ'}<br><span class="small">${p.list?'配布リストの予定日'+(p.vdue&&p.vdue!==p.due?`（Velosでは ${esc(p.vdue)}）`:''):esc(p.from.date)+'の'+esc(p.from.type)+'から計算した目安'}</span></div>`):''}
    ${c.memo?`<div class="note">${esc(c.memo)}</div>`:''}
    <h2>親と子</h2><div class="ped"><div><small>父</small>${esc(c.sire||'—')}</div><div><small>母</small>${tagLink(c.dam,c.dam||'—')}</div>
    <div><small>母の父</small>${esc((dam&&dam.sire)||c.dsire||'—')}</div><div><small>母の母</small>${dam?tagLink(dam.dam,dam.dam||'—'):'—'}</div></div>
@@ -244,9 +250,10 @@ function dataView(){fab.hidden=true;cur=null;
   app.innerHTML=`<h2>CSVを取り込む</h2><div class="card"><p class="small" style="margin-top:0">居場所台帳などのCSV。1行目の見出しに「耳標・生年月日・父・母・母の父・牛舎・房・名号」のどれかがあれば読み取ります。居場所が変わっていた牛には「移動」の記録が自動で付きます。</p>
    <input type="file" id="file" accept=".csv,.txt,text/csv" aria-label="CSVファイル"><label for="paste">または貼り付け</label><textarea id="paste" placeholder="耳標,生年月日,父,母,牛舎,房"></textarea>
    <div class="btns" style="margin-top:10px"><button class="btn pri" id="imp">取り込む</button></div></div>
+   <h2>職場データを取り込む（追加・更新）</h2><div class="card"><p class="small" style="margin-top:0">台帳などから作ったデータファイル（daicho-data-….json）を選びます。スマホで入れた記録は消えず、同じ記録は上書き、新しい記録だけ足されます。</p><input type="file" id="merge" accept=".json,application/json" aria-label="データファイル"></div>
    <h2>バックアップ（週1回）</h2><div class="card"><div class="btns"><button class="btn pri" id="exJ">全データを書き出す（JSON）</button><button class="btn" id="exC">記録をCSVで書き出す（Excel用）</button></div>
    <label for="out">書き出した中身（ダウンロードできないときはここからコピー）</label><textarea id="out" readonly></textarea>
-   <label for="restore">バックアップから戻す（JSONファイル）</label><input type="file" id="restore" accept=".json,application/json"></div>
+   <label for="restore">バックアップから戻す（全部入れ替え）</label><input type="file" id="restore" accept=".json,application/json"></div>
    <h2>設定</h2><div class="card"><label for="gK">黒毛和種の妊娠期間（日）</label><input id="gK" inputmode="numeric" value="${esc(db.cfg.gK)}"><label for="gA">アンガスの妊娠期間（日）</label><input id="gA" inputmode="numeric" value="${esc(db.cfg.gA)}">
    <p class="small">分娩予定＝授精日＋妊娠期間。移植は7日胚として7日引きます。職場で使っている日数に合わせて直してください。</p><button class="btn" id="saveCfg">設定を保存</button></div>
    <h2>全部消す</h2><div class="card"><p class="small" style="margin-top:0">登録 ${Object.keys(db.cows).length}頭・記録 ${db.events.length}件。消す前に必ず書き出してください。</p><button class="btn warn" id="wipe">全データを消す</button></div>`;
@@ -255,6 +262,10 @@ function dataView(){fab.hidden=true;cur=null;
   document.getElementById('exC').onclick=()=>{const keys=['date','tag','type','sym','tx','temp','semen','embryo','res','calf','csex','cond','sire','kg','barn','pen','memo','by'];
     const head=['日付','耳標','種類','症状','処置・薬','体温','精液','受精卵','鑑定結果','子の耳標','子の性別','分娩状態','子の父','体重kg','牛舎','房','メモ','担当'];
     dl(`pocket-daicho-records-${today()}.csv`,[head,...[...db.events].sort((a,b)=>a.date<b.date?-1:1).map(e=>keys.map(k=>e[k]))].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')};
+  document.getElementById('merge').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(String(r.result));if(!d.cows||!d.events)throw 0;let nc=0,ne=0,ue=0;
+    for(const[t,c]of Object.entries(d.cows)){if(!db.cows[t])nc++;db.cows[t]=Object.assign(db.cows[t]||{},c);if(!c.gone)delete db.cows[t].gone}
+    const byId=new Map(db.events.map((x,i)=>[x.id,i]));for(const ev of d.events){if(byId.has(ev.id)){db.events[byId.get(ev.id)]=ev;ue++}else{db.events.push(ev);ne++}}
+    save();toast(`牛 新規${nc}頭・記録 新規${ne}件・更新${ue}件`);location.hash='';route()}catch(x){toast('このファイルは読めませんでした')}};r.readAsText(f)};
   document.getElementById('restore').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(String(r.result));if(!d.cows||!d.events)throw 0;db={cows:d.cows,events:d.events,cfg:Object.assign({gK:285,gA:283},d.cfg||{})};save();toast('バックアップから戻しました');route()}catch(x){toast('このファイルは読めませんでした')}};r.readAsText(f)};
   document.getElementById('saveCfg').onclick=()=>{db.cfg.gK=+document.getElementById('gK').value||285;db.cfg.gA=+document.getElementById('gA').value||283;save();toast('保存しました')};
   let armed=false;const w=document.getElementById('wipe');w.onclick=()=>{if(!armed){armed=true;w.textContent='本当に消す（もう一度押す）';return}db={cows:{},events:[],cfg:db.cfg};save();location.hash='';route();toast('全部消しました')}}
@@ -276,7 +287,7 @@ function route(){const h=decodeURIComponent(location.hash.slice(1));close();
   if(h==='data')dataView();else if(h.startsWith('c-'))cowView(h.slice(2));else home();window.scrollTo(0,0)}
 window.addEventListener('hashchange',route);
 q.addEventListener('keydown',e=>{if(e.key==='Enter'){const t=norm(q.value);if(t){location.hash='c-'+t;q.value='';q.blur()}}});
-q.addEventListener('input',()=>{const t=norm(q.value);if(!t||location.hash.startsWith('#c-')&&!t)return;const hits=Object.keys(db.cows).filter(k=>k.includes(t)).sort().slice(0,8);
+q.addEventListener('input',()=>{const t=norm(q.value);if(!t||location.hash.startsWith('#c-')&&!t)return;const hits=Object.keys(db.cows).filter(k=>k.includes(t)).sort((a,b)=>(active(b)-active(a))||(a<b?-1:1)).slice(0,10);
   if(location.hash&&location.hash!=='#')history.replaceState(null,'',location.pathname+location.search);fab.hidden=true;
   app.innerHTML=`<h2>「${esc(t)}」の候補</h2><div class="list">${hits.map(k=>rowHTML(k)).join('')||`<div class="empty">見つかりません。Enterでこの耳標を登録できます。</div>`}</div>`});
 fab.onclick=()=>cur&&evForm(cur);
