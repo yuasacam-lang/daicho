@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#23201b">
+<title>牛舎ポケット台帳</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+1p:wght@500;800&family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE: 現場の道具。手袋でも押せる大きさ、迷わない順番。
+   IDEA: 黄色い耳標そのもの。牛のページは耳標の札から始まる。
+   PICTURE: 耳標の札＋その牛の時間の流れ（記録の時系列）と体重の線。
+   COLOUR/TYPE: 耳標の黄 #f2c230、牛舎の焦げ茶 #23201b、注意の赤 #c8402a。M PLUS 1p の太字で番号。
+   LAYOUT: 1段組み。上に検索、その下に監視リスト・一覧。牛のページは札→親子→記録。 */
+:root{color-scheme:light dark;--bg:light-dark(#f3f0e8,#141312);--card:light-dark(#fffdf8,#1f1d1a);--ink:light-dark(#1d1b17,#efebe3);--mute:light-dark(#625c52,#a59e92);--line:light-dark(#dcd5c6,#37332d);--tag:#f2c230;--tagink:#1d1a10;--head:#23201b;--acc:#c8402a;--ok:light-dark(#2f6b45,#7cc495)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 "Noto Sans JP",system-ui,sans-serif;overflow-x:clip}
+header{background:var(--head);color:#f3efe6;padding:14px max(4vw,14px) 18px}
+.hrow{display:flex;align-items:center;gap:12px;max-width:760px;margin:0 auto}
+.hrow h1{font:800 20px/1.1 "M PLUS 1p",sans-serif;margin:0;flex:1}
+.hrow a{color:#f3efe6;font-size:14px;text-decoration:none;padding:10px 4px}
+.search{max-width:760px;margin:12px auto 0;position:relative}
+.search input{width:100%;font:800 26px/1 "M PLUS 1p",sans-serif;letter-spacing:.06em;padding:14px 16px;border-radius:14px;border:0;background:var(--tag);color:var(--tagink)}
+.search input::placeholder{color:#6b5a1a;font-size:18px;letter-spacing:0}
+main{max-width:760px;margin:0 auto;padding:16px max(4vw,14px) 90px}
+h2{font:800 18px/1.3 "M PLUS 1p",sans-serif;margin:22px 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.list{display:grid;gap:8px}
+.row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-height:56px;cursor:pointer;color:inherit;text-decoration:none;width:100%;text-align:left;font:inherit}
+.chip{flex:none;font:800 17px/1 "M PLUS 1p",sans-serif;background:var(--tag);color:var(--tagink);border-radius:8px 8px 14px 14px;padding:8px 9px;min-width:64px;text-align:center}
+.row .t{flex:1;font-size:14px;color:var(--mute)}.row .t b{color:var(--ink);font-size:15px}
+.due{flex:none;font-weight:700;font-size:14px;white-space:nowrap}.due.hot{color:var(--acc)}
+.filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.filters button,.btn{flex:none;font:700 15px/1 "Noto Sans JP",sans-serif;padding:12px 14px;min-height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer}
+.filters button.on,.btn.pri{background:var(--head);color:#f3efe6;border-color:var(--head)}
+:root:not([data-theme=light]) .filters button.on{outline:1px solid #f3efe6}
+.btn.warn{color:var(--acc);border-color:var(--acc)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.empty{color:var(--mute);font-size:14px;padding:10px 2px}
+/* 牛のページ */
+.tagwrap{display:flex;gap:16px;align-items:center}
+.bigtag{flex:none;width:118px;height:132px;position:relative}
+.bigtag svg{width:100%;height:100%}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;font-size:15px}
+.facts dt{color:var(--mute)}.facts dd{margin:0;font-weight:700}
+.ped{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px}
+.ped div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.ped small{display:block;color:var(--mute);font-size:13px}
+.ped a{color:inherit;font-weight:700}
+.alert{background:var(--acc);color:#fff;border-radius:12px;padding:12px 14px;font-weight:700;margin-top:12px}
+.note{background:var(--card);border-left:4px solid var(--tag);border-radius:8px;padding:10px 12px;margin-top:12px;font-size:15px}
+.fig{position:relative;height:170px}.fig>svg{position:absolute;inset:0;width:100%;height:100%}
+.tl{list-style:none;margin:0;padding:0;border-left:3px solid var(--line);margin-left:8px}
+.tl li{position:relative;padding:6px 0 12px 16px;cursor:pointer}
+.tl li::before{content:"";position:absolute;left:-8px;top:12px;width:13px;height:13px;border-radius:50%;background:var(--tag);border:2px solid var(--head)}
+.tl .d{font-size:13px;color:var(--mute);white-space:nowrap}.tl .k{font-weight:700;margin-right:6px}
+.tl li.治療::before{background:var(--acc)}.tl li.分娩::before{background:#4a8fd6}.tl li.移動::before{background:#999}
+/* シート（入力画面） */
+.sheet{position:fixed;inset:0;background:rgb(0 0 0/.45);display:none;align-items:flex-end;justify-content:center;z-index:9}
+.sheet.open{display:flex}
+.panel{background:var(--bg);width:100%;max-width:760px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:16px max(4vw,14px) 24px}
+.panel h3{font:800 19px/1.2 "M PLUS 1p",sans-serif;margin:0 0 10px}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+input,select,textarea{width:100%;font:16px "Noto Sans JP",sans-serif;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);min-height:46px}
+textarea{min-height:110px}
+:focus-visible{outline:3px solid var(--tag);outline-offset:2px}
+.types{display:flex;flex-wrap:wrap;gap:6px}
+.fab{position:fixed;right:max(4vw,14px);bottom:18px;z-index:5;font:800 17px/1 "M PLUS 1p",sans-serif;padding:16px 20px;border-radius:30px;border:0;background:var(--tag);color:var(--tagink);box-shadow:0 4px 14px rgb(0 0 0/.25);cursor:pointer}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%);background:var(--head);color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:10;max-width:90vw}
+#toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+.small{font-size:13px;color:var(--mute)}
+</style></head><body>
+<header>
+  <div class="hrow"><h1>牛舎ポケット台帳</h1><a href="#" id="goHome">一覧</a><a href="#data" id="goData">データ</a></div>
+  <div class="search"><input id="q" placeholder="耳標を入力（例 528J）" autocomplete="off" autocapitalize="characters" aria-label="耳標を検索"></div>
+</header>
+<main id="app"></main>
+<button class="fab" id="fab" hidden>＋ 記録</button>
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+<div id="toast" role="status"></div>
+<script>
+{
+const K='pocket-daicho-v1';
+let db={cows:{},events:[],cfg:{gK:285,gA:283}};
+const app=document.getElementById('app'),q=document.getElementById('q'),sheet=document.getElementById('sheet'),panel=document.getElementById('panel'),fab=document.getElementById('fab');
+let filt='すべて',tlFilt='すべて',cur=null;
+function load(){try{const s=localStorage.getItem(K);if(s){const d=JSON.parse(s);db={cows:d.cows||{},events:d.events||[],cfg:Object.assign({gK:285,gA:283},d.cfg||{})}}}catch(e){}}
+function save(){try{localStorage.setItem(K,JSON.stringify(db));return true}catch(e){toast('保存できませんでした。データ画面から書き出してください');return false}}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today=()=>fmt(new Date());
+const addDays=(s,n)=>{const d=new Date(s+'T00:00:00');d.setDate(d.getDate()+n);return fmt(d)};
+const diff=(a,b)=>Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/864e5);
+const md=s=>s?s.slice(5).replace('-','/'):'';
+const norm=t=>String(t||'').replace(/[０-９Ａ-Ｚａ-ｚ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).toUpperCase().replace(/\s/g,'');
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+let tt;function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2600)}
+
+/* 耳標の読み取り：300番台アンガス♀・200番台アンガス♂・500番台黒毛♀・400番台黒毛♂。末尾＝生まれ年度（I・Oは飛ばす、P=R8） */
+const LET='ABCDEFGHJKLMNPQRSTUVWXYZ';
+function decode(tag){const m=/^(\d)(\d\d)([A-Z])$/.exec(tag);if(!m)return null;
+  const bs={2:['アンガス','オス'],3:['アンガス','メス'],4:['黒毛和種','オス'],5:['黒毛和種','メス']}[m[1]]||['不明','不明'];
+  const i=LET.indexOf(m[3]);const r=i<0?null:8+(i-LET.indexOf('P'));
+  return{breed:bs[0],sex:bs[1],y:r>0?`R${r}年度生（${2018+r}年度）`:'年度不明'}}
+
+const T={
+ 治療:[['sym','症状'],['tx','処置・薬（獣医の指示どおり）'],['temp','体温（℃）','number'],['by','担当']],
+ 授精:[['semen','精液（種雄牛）'],['by','担当']],
+ 移植:[['embryo','受精卵（父×母）'],['by','担当']],
+ 妊鑑:[['res','結果','＋ 妊娠|－ 空胎'],['by','担当']],
+ 分娩:[['calf','子の耳標'],['csex','子の性別','メス|オス'],['cond','状態','正常|介助|難産|死産'],['sire','子の父（空欄なら直近の授精・移植から）']],
+ 体重:[['kg','体重（kg）','number']],
+ 移動:[['barn','牛舎'],['pen','房（A〜D・Ai など）']],
+ メモ:[['memo','メモ']]};
+function summary(e){switch(e.type){
+ case'治療':return[e.sym,e.tx,e.temp&&e.temp+'℃'].filter(Boolean).join('／');
+ case'授精':return e.semen||'';case'移植':return e.embryo||'';case'妊鑑':return e.res||'';
+ case'分娩':return[e.calf&&('子 '+e.calf),e.csex,e.cond].filter(Boolean).join('／');
+ case'体重':return e.kg?e.kg+' kg':'';case'移動':return[e.barn,e.pen].filter(Boolean).join(' ');
+ default:return e.memo||''}}
+const evs=tag=>db.events.filter(e=>e.tag===tag).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+function loc(tag){const m=evs(tag).filter(e=>e.type==='移動').pop();const c=db.cows[tag]||{};return m?{barn:m.barn,pen:m.pen,since:m.date}:{barn:c.barn,pen:c.pen,since:null}}
+function preg(tag){let last=null;const ev=evs(tag);
+  for(const e of ev){if(e.type==='授精'||e.type==='移植')last=e;else if(e.type==='分娩')last=null;else if(e.type==='妊鑑'&&last&&String(e.res).startsWith('－'))last=null}
+  if(!last)return null;const d=decode(tag);const g=d&&d.breed==='アンガス'?+db.cfg.gA:+db.cfg.gK;
+  const due=addDays(last.date,g-(last.type==='移植'?7:0));
+  return{due,from:last,conf:ev.some(e=>e.type==='妊鑑'&&e.date>=last.date&&String(e.res).startsWith('＋')),left:diff(today(),due)}}
+function lastSemen(tag){const e=evs(tag).filter(e=>e.type==='授精'||e.type==='移植').pop();return e?(e.semen||(e.embryo||'').split('×')[0]||''):''}
+const tagLink=(t,lbl)=>db.cows[t]?`<a href="#c-${esc(t)}">${esc(lbl||t)}</a>`:esc(lbl||t||'—');
+
+function rowHTML(t,extra=''){const c=db.cows[t]||{},l=loc(t),d=decode(t);
+  return `<a class="row" href="#c-${esc(t)}"><span class="chip">${esc(t)}</span><span class="t"><b>${esc(c.name||(d?d.breed+' '+d.sex:''))}</b><br>${esc([l.barn,l.pen].filter(Boolean).join(' ')||'居場所未登録')}</span>${extra}</a>`}
+
+function home(){fab.hidden=true;cur=null;
+  const tags=Object.keys(db.cows).sort();
+  if(!tags.length){app.innerHTML=`<h2>はじめに</h2><div class="card"><p>まだ牛が登録されていません。</p><div class="btns"><button class="btn pri" id="sample">サンプルで試す</button><a class="btn" href="#data" style="text-decoration:none">CSVを取り込む</a><button class="btn" id="addCow">1頭ずつ登録</button></div><p class="small">データはこのスマホのブラウザの中だけに保存されます。週1回はデータ画面から書き出してください。</p></div>`;
+    document.getElementById('sample').onclick=loadSample;document.getElementById('addCow').onclick=()=>cowForm();return}
+  const w=tags.map(t=>({t,p:preg(t)})).filter(x=>x.p&&x.p.left<=30&&x.p.left>=-10).sort((a,b)=>a.p.left-b.p.left);
+  const barns=['すべて',...new Set(tags.map(t=>loc(t).barn||'未登録'))];
+  const shown=tags.filter(t=>filt==='すべて'||(loc(t).barn||'未登録')===filt);
+  const rec=[...db.events].sort((a,b)=>(b.date+b.id)>(a.date+a.id)?1:-1).slice(0,6);
+  app.innerHTML=`<h2>分娩の監視（予定日の14日前から）</h2><div class="list">${w.length?w.map(x=>rowHTML(x.t,`<span class="due ${x.p.left<=14?'hot':''}">${x.p.left>=0?'あと'+x.p.left+'日':(-x.p.left)+'日超過'}<br><span class="small">${md(x.p.due)}${x.p.conf?'':'・未鑑定'}</span></span>`)).join(''):'<div class="empty">30日以内に分娩予定の牛はいません</div>'}</div>
+  <h2>最近の記録</h2><div class="list">${rec.length?rec.map(e=>`<a class="row" href="#c-${esc(e.tag)}"><span class="chip">${esc(e.tag)}</span><span class="t"><b>${esc(e.type)}</b> ${esc(summary(e))}<br>${esc(e.date)}</span></a>`).join(''):'<div class="empty">記録はまだありません</div>'}</div>
+  <h2>牛の一覧（${shown.length}頭）</h2><div class="filters">${barns.map(b=>`<button class="${b===filt?'on':''}" data-b="${esc(b)}">${esc(b)}</button>`).join('')}</div>
+  <div class="list" style="margin-top:8px">${shown.map(t=>rowHTML(t)).join('')}</div>
+  <div class="btns" style="margin-top:14px"><button class="btn" id="addCow">＋ 牛を登録</button></div>`;
+  app.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{filt=b.dataset.b;home()});
+  document.getElementById('addCow').onclick=()=>cowForm()}
+
+function tagSVG(t){return `<svg viewBox="0 0 118 132" aria-hidden="true"><path d="M59 4c8 0 13 5 13 11v6h30c8 0 12 5 12 12v78c0 10-8 17-18 17H22c-10 0-18-7-18-17V33c0-7 4-12 12-12h30v-6c0-6 5-11 13-11z" fill="var(--tag)" stroke="#8a6d12" stroke-width="2"/><circle cx="59" cy="16" r="5" fill="var(--bg)" stroke="#8a6d12" stroke-width="2"/><path d="M10 40h98" stroke="#fff" stroke-opacity=".5" stroke-width="3"/><text x="59" y="${t.length>4?88:92}" text-anchor="middle" font-family="M PLUS 1p,sans-serif" font-weight="800" font-size="${t.length>4?26:34}" fill="var(--tagink)">${esc(t)}</text></svg>`}
+
+function cowView(t){cur=t;const c=db.cows[t];if(!c){app.innerHTML=`<div class="card"><p>「${esc(t)}」は未登録です。</p><button class="btn pri" id="reg">この耳標で登録</button></div>`;fab.hidden=true;document.getElementById('reg').onclick=()=>cowForm(null,t);return}
+  fab.hidden=false;const d=decode(t),l=loc(t),p=preg(t),ev=evs(t);
+  const dam=c.dam&&db.cows[c.dam];const kids=Object.keys(db.cows).filter(k=>db.cows[k].dam===t).sort();
+  const age=c.birth?Math.floor(diff(c.birth,today())/30.44):null;
+  const w=ev.filter(e=>e.type==='体重'&&e.kg);let dg='';
+  if(w.length>1){const a=w[0],b=w[w.length-1],n=diff(a.date,b.date);if(n>0)dg=`${((b.kg-a.kg)/n).toFixed(2)} kg/日（${md(a.date)}〜${md(b.date)}）`}
+  const types=['すべて',...Object.keys(T)].filter(k=>k==='すべて'||ev.some(e=>e.type===k));if(!types.includes(tlFilt))tlFilt='すべて';
+  const tl=ev.filter(e=>tlFilt==='すべて'||e.type===tlFilt).reverse();
+  app.innerHTML=`<div class="tagwrap"><div class="bigtag">${tagSVG(t)}</div><dl class="facts">
+   <dt>品種</dt><dd>${esc(d?d.breed+'・'+d.sex:'不明')}</dd><dt>生まれ</dt><dd>${esc(c.birth||(d?d.y:'—'))}${age!=null?`（${age}か月）`:''}</dd>
+   ${c.name?`<dt>名号</dt><dd>${esc(c.name)}</dd>`:''}<dt>居場所</dt><dd>${esc([l.barn,l.pen].filter(Boolean).join(' ')||'未登録')}${l.since?`<span class="small"> ${md(l.since)}〜</span>`:''}</dd></dl></div>
+   ${p?(p.left<=14?`<div class="alert">分娩予定 ${esc(p.due)}（${p.left>=0?'あと'+p.left+'日':(-p.left)+'日超過'}）・監視中${p.conf?'':'・妊娠鑑定まだ'}</div>`:`<div class="note">分娩予定 ${esc(p.due)}（あと${p.left}日）${p.conf?'・妊娠確認済み':'・妊娠鑑定まだ'}<br><span class="small">${esc(p.from.date)}の${esc(p.from.type)}から計算した目安</span></div>`):''}
+   ${c.memo?`<div class="note">${esc(c.memo)}</div>`:''}
+   <h2>親と子</h2><div class="ped"><div><small>父</small>${esc(c.sire||'—')}</div><div><small>母</small>${tagLink(c.dam,c.dam||'—')}</div>
+   <div><small>母の父</small>${esc((dam&&dam.sire)||c.dsire||'—')}</div><div><small>母の母</small>${dam?tagLink(dam.dam,dam.dam||'—'):'—'}</div></div>
+   ${kids.length?`<p class="small" style="margin:10px 0 4px">子（${kids.length}頭）</p><div class="list">${kids.map(k=>rowHTML(k,`<span class="due">${esc(db.cows[k].birth?md(db.cows[k].birth):'')}</span>`)).join('')}</div>`:''}
+   <h2>体重</h2>${w.length?`<div class="card"><div class="fig" id="wfig"><svg id="wsvg" role="img" aria-label="体重の推移"></svg></div><p class="small" style="margin:6px 0 0">最新 ${esc(w[w.length-1].kg)} kg（${esc(w[w.length-1].date)}）${dg?'・増体 '+esc(dg):''}</p></div>`:'<div class="empty">体重の記録はまだありません</div>'}
+   <h2>記録（${ev.length}件）</h2><div class="filters">${types.map(k=>`<button class="${k===tlFilt?'on':''}" data-f="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+   <ul class="tl" style="margin-top:10px">${tl.length?tl.map(e=>`<li class="${esc(e.type)}" data-id="${esc(e.id)}"><span class="d">${esc(e.date)}</span><br><span class="k">${esc(e.type)}</span>${esc(summary(e))}${e.by?`<span class="small">（${esc(e.by)}）</span>`:''}</li>`).join(''):'<li>記録はまだありません</li>'}</ul>
+   <div class="btns" style="margin-top:16px"><button class="btn" id="editCow">牛の情報を直す</button></div>`;
+  app.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{tlFilt=b.dataset.f;cowView(t)});
+  app.querySelectorAll('.tl li[data-id]').forEach(li=>li.onclick=()=>evForm(t,db.events.find(e=>e.id===li.dataset.id)));
+  document.getElementById('editCow').onclick=()=>cowForm(t);
+  if(w.length){const s=document.getElementById('wsvg');const draw=()=>{const W=s.clientWidth,H=s.clientHeight;if(!W)return;
+    const xs=w.map(e=>new Date(e.date).getTime()),ys=w.map(e=>+e.kg);const x0=Math.min(...xs),x1=Math.max(...xs)||x0+1,y0=Math.min(...ys)*.95,y1=Math.max(...ys)*1.03;
+    const X=v=>36+(W-50)*((v-x0)/((x1-x0)||1)),Y=v=>H-22-(H-34)*((v-y0)/((y1-y0)||1));
+    const pts=w.map((e,i)=>[X(xs[i]),Y(ys[i])]);
+    s.innerHTML=`<line x1="36" x2="${W-8}" y1="${H-22}" y2="${H-22}" stroke="var(--line)"/><text x="30" y="${Y(y1)+10}" text-anchor="end" font-size="12" fill="var(--mute)">${Math.round(y1)}</text><text x="30" y="${H-24}" text-anchor="end" font-size="12" fill="var(--mute)">${Math.round(y0)}</text>
+     <polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="var(--ink)" stroke-width="2.5"/>${pts.map(p=>`<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="var(--tag)" stroke="var(--ink)" stroke-width="2"/>`).join('')}
+     <text x="36" y="${H-5}" font-size="12" fill="var(--mute)">${md(w[0].date)}</text><text x="${W-8}" y="${H-5}" text-anchor="end" font-size="12" fill="var(--mute)">${md(w[w.length-1].date)}</text>`};
+    const ro=new ResizeObserver(draw);ro.observe(s)}}
+
+function open(html){panel.innerHTML=html;sheet.classList.add('open');const f=panel.querySelector('input,select');if(f&&!('ontouchstart' in window))f.focus()}
+function close(){sheet.classList.remove('open')}
+sheet.addEventListener('click',e=>{if(e.target===sheet)close()});
+function field([k,lbl,kind],v){const val=esc(v??'');if(kind&&kind.includes('|'))return`<label for="f_${k}">${lbl}</label><select id="f_${k}" name="${k}"><option value=""></option>${kind.split('|').map(o=>`<option ${o===v?'selected':''}>${esc(o)}</option>`).join('')}</select>`;
+  return`<label for="f_${k}">${lbl}</label><input id="f_${k}" name="${k}" value="${val}" ${kind==='number'?'inputmode="decimal"':''}>`}
+function evForm(tag,ev,type){type=ev?ev.type:(type||'治療');
+  open(`<h3>${esc(tag)} に${ev?'記録を直す':'記録を足す'}</h3>${ev?'':`<div class="types">${Object.keys(T).map(k=>`<button class="btn ${k===type?'pri':''}" data-t="${k}">${k}</button>`).join('')}</div>`}
+   <form id="ef"><label for="f_date">日付</label><input type="date" id="f_date" name="date" value="${esc(ev?ev.date:today())}" required>
+   ${T[type].map(f=>field(f,ev?ev[f[0]]:'')).join('')}
+   <div class="btns" style="margin-top:16px"><button class="btn pri" type="submit">保存</button><button class="btn" type="button" id="cx">やめる</button>${ev?'<button class="btn warn" type="button" id="del">削除</button>':''}</div></form>`);
+  panel.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>evForm(tag,null,b.dataset.t));
+  document.getElementById('cx').onclick=close;
+  if(ev){let armed=false;const d=document.getElementById('del');d.onclick=()=>{if(!armed){armed=true;d.textContent='もう一度押すと削除';return}db.events=db.events.filter(x=>x.id!==ev.id);save();close();route();toast('削除しました')}}
+  document.getElementById('ef').onsubmit=e=>{e.preventDefault();const o=Object.fromEntries(new FormData(e.target));
+    for(const k in o)o[k]=String(o[k]).trim();
+    if(type==='分娩'){o.calf=norm(o.calf);if(!o.sire)o.sire=lastSemen(tag)}
+    if(ev)Object.assign(ev,o);else db.events.push(Object.assign({id:uid(),tag,type},o));
+    if(type==='分娩'&&o.calf&&!db.cows[o.calf]){const l=loc(tag);db.cows[o.calf]={birth:o.date,dam:tag,sire:o.sire,barn:l.barn,pen:l.pen,memo:o.cond==='死産'?'死産':''};toast(`子牛 ${o.calf} を登録しました`)}else toast('保存しました');
+    save();close();route()}}
+function cowForm(t,newTag){const c=t?db.cows[t]:{};
+  open(`<h3>${t?esc(t)+' の情報':'牛を登録'}</h3><form id="cf">
+   <label for="c_tag">耳標</label><input id="c_tag" name="tag" value="${esc(t||newTag||'')}" ${t?'readonly':''} required autocapitalize="characters">
+   <label for="c_name">名号（任意）</label><input id="c_name" name="name" value="${esc(c.name)}">
+   <label for="c_birth">生年月日</label><input type="date" id="c_birth" name="birth" value="${esc(c.birth)}">
+   <label for="c_sire">父（種雄牛）</label><input id="c_sire" name="sire" value="${esc(c.sire)}">
+   <label for="c_dam">母（耳標）</label><input id="c_dam" name="dam" value="${esc(c.dam)}" autocapitalize="characters">
+   <label for="c_dsire">母の父（母が未登録のとき）</label><input id="c_dsire" name="dsire" value="${esc(c.dsire)}">
+   ${t?'':`<label for="c_barn">牛舎</label><input id="c_barn" name="barn"><label for="c_pen">房</label><input id="c_pen" name="pen">`}
+   <label for="c_memo">メモ</label><input id="c_memo" name="memo" value="${esc(c.memo)}">
+   <div class="btns" style="margin-top:16px"><button class="btn pri" type="submit">保存</button><button class="btn" type="button" id="cx">やめる</button>${t?'<button class="btn warn" type="button" id="del">この牛を削除</button>':''}</div></form>`);
+  document.getElementById('cx').onclick=close;
+  if(t){let armed=false;const d=document.getElementById('del');d.onclick=()=>{if(!armed){armed=true;d.textContent='記録ごと消えます。もう一度押すと削除';return}delete db.cows[t];db.events=db.events.filter(e=>e.tag!==t);save();close();location.hash='';route()}}
+  document.getElementById('cf').onsubmit=e=>{e.preventDefault();const o=Object.fromEntries(new FormData(e.target));const tag=norm(o.tag);if(!tag)return;
+    if(!t&&db.cows[tag]){toast('その耳標はもう登録されています');return}
+    delete o.tag;for(const k in o)o[k]=String(o[k]).trim();o.dam=norm(o.dam);db.cows[tag]=Object.assign(db.cows[tag]||{},o);save();close();location.hash='c-'+tag;route();toast('保存しました')}}
+
+/* データ画面：CSV取り込み・書き出し */
+function parseCSV(txt){const rows=[];let r=[],f='',qd=false;txt=txt.replace(/^﻿/,'');
+  for(let i=0;i<txt.length;i++){const ch=txt[i];if(qd){if(ch==='"'){if(txt[i+1]==='"'){f+='"';i++}else qd=false}else f+=ch}
+   else if(ch==='"')qd=true;else if(ch===','||ch==='\t'){r.push(f);f=''}else if(ch==='\n'||ch==='\r'){if(ch==='\r'&&txt[i+1]==='\n')i++;r.push(f);rows.push(r);r=[];f=''}else f+=ch}
+  if(f||r.length){r.push(f);rows.push(r)}return rows.filter(x=>x.some(v=>v.trim()))}
+function colKey(h){h=h.trim();if(/耳標|個体番号|^番号$/.test(h))return'tag';if(/生年月日|生年|誕生/.test(h))return'birth';if(/母の父|母父/.test(h))return'dsire';if(/^父|種雄/.test(h))return'sire';if(/^母/.test(h))return'dam';if(/牛舎|居場所|場所/.test(h))return'barn';if(/房/.test(h))return'pen';if(/名号|名前/.test(h))return'name';return null}
+const toDate=s=>{s=String(s||'').trim().replace(/[/.]/g,'-');const m=/^(\d{4})-(\d{1,2})-(\d{1,2})/.exec(s);return m?`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`:''};
+function importCSV(txt){const rows=parseCSV(txt);if(rows.length<2){toast('1行目に見出し、2行目からデータを入れてください');return}
+  const keys=rows[0].map(colKey);if(!keys.includes('tag')){toast('「耳標」の列が見つかりません');return}
+  let add=0,upd=0,mv=0;
+  for(const r of rows.slice(1)){const o={};keys.forEach((k,i)=>{if(k&&r[i]!=null&&String(r[i]).trim())o[k]=String(r[i]).trim()});const tag=norm(o.tag);if(!tag)continue;delete o.tag;
+    if(o.birth)o.birth=toDate(o.birth);if(o.dam)o.dam=norm(o.dam);
+    const ex=db.cows[tag];const before=ex?loc(tag):null;
+    if(ex){const{barn,pen,...rest}=o;Object.assign(ex,rest);upd++;if((barn||pen)&&(before.barn!==barn||before.pen!==pen)){db.events.push({id:uid(),tag,type:'移動',date:today(),barn:barn||'',pen:pen||'',memo:'CSV取込'});mv++}}
+    else{db.cows[tag]=o;add++}}
+  save();toast(`新規 ${add}頭・更新 ${upd}頭・移動 ${mv}件`);route()}
+function dl(name,text,type){try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}catch(e){}
+  document.getElementById('out').value=text;toast('書き出しました（下の枠からコピーもできます）')}
+const csvCell=v=>/[",\n]/.test(v=String(v??''))?`"${v.replace(/"/g,'""')}"`:v;
+function dataView(){fab.hidden=true;cur=null;
+  app.innerHTML=`<h2>CSVを取り込む</h2><div class="card"><p class="small" style="margin-top:0">居場所台帳などのCSV。1行目の見出しに「耳標・生年月日・父・母・母の父・牛舎・房・名号」のどれかがあれば読み取ります。居場所が変わっていた牛には「移動」の記録が自動で付きます。</p>
+   <input type="file" id="file" accept=".csv,.txt,text/csv" aria-label="CSVファイル"><label for="paste">または貼り付け</label><textarea id="paste" placeholder="耳標,生年月日,父,母,牛舎,房"></textarea>
+   <div class="btns" style="margin-top:10px"><button class="btn pri" id="imp">取り込む</button></div></div>
+   <h2>バックアップ（週1回）</h2><div class="card"><div class="btns"><button class="btn pri" id="exJ">全データを書き出す（JSON）</button><button class="btn" id="exC">記録をCSVで書き出す（Excel用）</button></div>
+   <label for="out">書き出した中身（ダウンロードできないときはここからコピー）</label><textarea id="out" readonly></textarea>
+   <label for="restore">バックアップから戻す（JSONファイル）</label><input type="file" id="restore" accept=".json,application/json"></div>
+   <h2>設定</h2><div class="card"><label for="gK">黒毛和種の妊娠期間（日）</label><input id="gK" inputmode="numeric" value="${esc(db.cfg.gK)}"><label for="gA">アンガスの妊娠期間（日）</label><input id="gA" inputmode="numeric" value="${esc(db.cfg.gA)}">
+   <p class="small">分娩予定＝授精日＋妊娠期間。移植は7日胚として7日引きます。職場で使っている日数に合わせて直してください。</p><button class="btn" id="saveCfg">設定を保存</button></div>
+   <h2>全部消す</h2><div class="card"><p class="small" style="margin-top:0">登録 ${Object.keys(db.cows).length}頭・記録 ${db.events.length}件。消す前に必ず書き出してください。</p><button class="btn warn" id="wipe">全データを消す</button></div>`;
+  document.getElementById('imp').onclick=()=>{const f=document.getElementById('file').files[0];if(f){const r=new FileReader();r.onload=()=>importCSV(String(r.result));r.readAsText(f)}else importCSV(document.getElementById('paste').value)};
+  document.getElementById('exJ').onclick=()=>dl(`pocket-daicho-${today()}.json`,JSON.stringify(db),'application/json');
+  document.getElementById('exC').onclick=()=>{const keys=['date','tag','type','sym','tx','temp','semen','embryo','res','calf','csex','cond','sire','kg','barn','pen','memo','by'];
+    const head=['日付','耳標','種類','症状','処置・薬','体温','精液','受精卵','鑑定結果','子の耳標','子の性別','分娩状態','子の父','体重kg','牛舎','房','メモ','担当'];
+    dl(`pocket-daicho-records-${today()}.csv`,[head,...[...db.events].sort((a,b)=>a.date<b.date?-1:1).map(e=>keys.map(k=>e[k]))].map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv')};
+  document.getElementById('restore').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(String(r.result));if(!d.cows||!d.events)throw 0;db={cows:d.cows,events:d.events,cfg:Object.assign({gK:285,gA:283},d.cfg||{})};save();toast('バックアップから戻しました');route()}catch(x){toast('このファイルは読めませんでした')}};r.readAsText(f)};
+  document.getElementById('saveCfg').onclick=()=>{db.cfg.gK=+document.getElementById('gK').value||285;db.cfg.gA=+document.getElementById('gA').value||283;save();toast('保存しました')};
+  let armed=false;const w=document.getElementById('wipe');w.onclick=()=>{if(!armed){armed=true;w.textContent='本当に消す（もう一度押す）';return}db={cows:{},events:[],cfg:db.cfg};save();location.hash='';route();toast('全部消しました')}}
+
+function loadSample(){const D=n=>addDays(today(),n);
+  db.cows={'528J':{name:'さくら',birth:'2021-04-12',sire:'北福桜',dam:'503E',memo:'サンプルデータ'},'503E':{name:'はるか',birth:'2016-03-02',sire:'勝照福',dam:'',dsire:'紋次郎'},
+   '541L':{birth:'2023-05-20',sire:'百合勝',dam:'528J'},'312M':{birth:'2024-03-10',sire:'Angus A',dam:''},'570P':{birth:D(-60),sire:'福之姫',dam:'528J'},'433N':{birth:'2025-06-01',sire:'安福久',dam:'503E'}};
+  db.events=[
+   {id:uid(),tag:'528J',date:D(-300),type:'移動',barn:'成雌牛舎',pen:'A'},{id:uid(),tag:'528J',date:D(-60),type:'分娩',calf:'570P',csex:'メス',cond:'正常',sire:'福之姫'},
+   {id:uid(),tag:'528J',date:D(-272),type:'授精',semen:'福之姫',by:'湯浅'},{id:uid(),tag:'528J',date:D(-230),type:'妊鑑',res:'＋ 妊娠'},
+   {id:uid(),tag:'528J',date:D(-20),type:'治療',sym:'食欲不振',tx:'獣医往診・指示どおり投薬',temp:'39.8',by:'湯浅'},
+   {id:uid(),tag:'503E',date:D(-200),type:'移動',barn:'成雌牛舎',pen:'C'},{id:uid(),tag:'503E',date:D(-276),type:'授精',semen:'勝照福',by:'湯浅'},{id:uid(),tag:'503E',date:D(-230),type:'妊鑑',res:'＋ 妊娠'},
+   {id:uid(),tag:'312M',date:D(-100),type:'移動',barn:'育成牛舎',pen:'B'},{id:uid(),tag:'312M',date:D(-250),type:'移植',embryo:'Angus B×305K'},
+   {id:uid(),tag:'541L',date:D(-30),type:'移動',barn:'総合牛舎',pen:'A'},{id:uid(),tag:'570P',date:D(-14),type:'移動',barn:'成雌牛舎',pen:'A'},
+   ...[[-60,32],[-45,48],[-30,61],[-14,78],[-1,92]].map(([d,kg])=>({id:uid(),tag:'570P',date:D(d),type:'体重',kg:String(kg)}))];
+  save();toast('サンプルを入れました');route()}
+
+function route(){const h=decodeURIComponent(location.hash.slice(1));close();
+  if(h==='data')dataView();else if(h.startsWith('c-'))cowView(h.slice(2));else home();window.scrollTo(0,0)}
+window.addEventListener('hashchange',route);
+q.addEventListener('keydown',e=>{if(e.key==='Enter'){const t=norm(q.value);if(t){location.hash='c-'+t;q.value='';q.blur()}}});
+q.addEventListener('input',()=>{const t=norm(q.value);if(!t||location.hash.startsWith('#c-')&&!t)return;const hits=Object.keys(db.cows).filter(k=>k.includes(t)).sort().slice(0,8);
+  if(location.hash&&location.hash!=='#')history.replaceState(null,'',location.pathname+location.search);fab.hidden=true;
+  app.innerHTML=`<h2>「${esc(t)}」の候補</h2><div class="list">${hits.map(k=>rowHTML(k)).join('')||`<div class="empty">見つかりません。Enterでこの耳標を登録できます。</div>`}</div>`});
+fab.onclick=()=>cur&&evForm(cur);
+document.getElementById('goHome').onclick=e=>{e.preventDefault();q.value='';history.replaceState(null,'',location.pathname+location.search);route()};
+load();try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+route();
+try{if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js')}catch(e){}
+}
+</script>
+</body></html>
